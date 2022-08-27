@@ -546,7 +546,7 @@ class VQModel(pl.LightningModule):
                                             last_layer=self.get_last_layer(), split="train")
 
             self.log("train/aeloss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
-            self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+            # self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
             return aeloss
 
         if optimizer_idx == 1:
@@ -554,7 +554,7 @@ class VQModel(pl.LightningModule):
             discloss, log_dict_disc = self.loss(qloss, x, xrec, optimizer_idx, self.global_step,
                                             last_layer=self.get_last_layer(), split="train")
             self.log("train/discloss", discloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
-            self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+            # self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
             return discloss
 
     def validation_step(self, batch, batch_idx):
@@ -582,9 +582,9 @@ class VQModel(pl.LightningModule):
                    prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
         self.log("val/aeloss", aeloss,
                    prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
-        self.log_dict(log_dict_ae)
-        self.log_dict(log_dict_disc)
-        return self.log_dict
+        # self.log_dict(log_dict_ae)
+        # self.log_dict(log_dict_disc)
+        return rec_loss, discloss
 
     def configure_optimizers(self):
         lr = self.learning_rate

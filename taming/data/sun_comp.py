@@ -164,3 +164,5 @@ class Sun360CompValidation(Sun360CompBase):
                          # set args through a configs yaml.
                          size=size, random_crop=random_crop, interpolation=interpolation, 
                          coord=coord, no_crop=no_crop, no_rescale=no_rescale)
+
+

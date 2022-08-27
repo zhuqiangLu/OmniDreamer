@@ -1,0 +1,1 @@
+CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=0,1 python main.py --base configs/sp360_comp_vqgan.yaml -t True --gpus 1,
