@@ -1,0 +1,5 @@
+[default]
+entity = zhuqianglu
+project = omnidreamer
+base_url = https://api.wandb.ai
+

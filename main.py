@@ -10,6 +10,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, Callback, LearningRateMonitor
 from pytorch_lightning.utilities.distributed import rank_zero_only
+import wandb
 
 def get_obj_from_str(string, reload=False):
     module, cls = string.rsplit(".", 1)
@@ -226,7 +227,6 @@ class ImageLogger(Callback):
 
     @rank_zero_only
     def _wandb(self, pl_module, images, batch_idx, split):
-        raise ValueError("No way wandb")
         grids = dict()
         for k in images:
             grid = torchvision.utils.make_grid(images[k])
@@ -400,9 +400,12 @@ if __name__ == "__main__":
             name = ""
         nowname = now+name+opt.postfix
         logdir = os.path.join("logs", nowname)
+    
+    logdir = os.path.join('/share/zhlu6105', logdir)
 
     ckptdir = os.path.join(logdir, "checkpoints")
     cfgdir = os.path.join(logdir, "configs")
+    print('===========================')
     print(ckptdir, cfgdir)
     seed_everything(opt.seed)
 
@@ -443,23 +446,23 @@ if __name__ == "__main__":
             "wandb": {
                 "target": "pytorch_lightning.loggers.WandbLogger",
                 "params": {
-                    "name": nowname,
+                    "project": "omnidreamer",
+                    "name": "vqgan_2",
                     "save_dir": logdir,
                     "offline": opt.debug,
                     "id": nowname,
                 }
             },
-            "testtube": {
-                "target": "pytorch_lightning.loggers.TestTubeLogger",
-                "params": {
-                    "name": "testtube",
-                    "save_dir": logdir,
-                }
-            },
+            # "testtube": {
+            #     "target": "pytorch_lightning.loggers.TestTubeLogger",
+            #     "params": {
+            #         "name": "testtube",
+            #         "save_dir": logdir,
+            #     }
+            # },
         }
-        default_logger_cfg = default_logger_cfgs["testtube"]
-        logger_cfg =  OmegaConf.create()
-        logger_cfg = OmegaConf.merge(default_logger_cfg, logger_cfg)
+        default_logger_cfg = default_logger_cfgs["wandb"]
+        logger_cfg = OmegaConf.merge(default_logger_cfg, )
         trainer_kwargs["logger"] = instantiate_from_config(logger_cfg)
 
         # modelcheckpoint - use TrainResult/EvalResult(checkpoint_on=metric) to
