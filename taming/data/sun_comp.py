@@ -65,15 +65,18 @@ class Sun360CompBase(Dataset):
         if not image.mode == "RGB":
             image = image.convert("RGB")
         image = np.array(image).astype(np.uint8)
+    
         
         if not self.no_rescale and self.size is not None: # Default True. False when refine net training.
             image = self.image_rescaler(image=image)["image"]
+        
         
         if False:
             # random scale
             random_h = torch.randint(256,512,(1,))
             image = cv2.resize(image, (random_h*2, random_h), interpolation = cv2.INTER_AREA)
-
+        image = cv2.resize(image, (256, 256), interpolation = cv2.INTER_AREA)
+        
         # Masking here
         masked_image, binary_mask = self.masking(image) # Make input image with holes.
         if not self.coord:

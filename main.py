@@ -447,7 +447,7 @@ if __name__ == "__main__":
                 "target": "pytorch_lightning.loggers.WandbLogger",
                 "params": {
                     "project": "omnidreamer",
-                    "name": "vqgan_2",
+                    "name": "transformer",
                     "save_dir": logdir,
                     "offline": opt.debug,
                     "id": nowname,
@@ -476,6 +476,7 @@ if __name__ == "__main__":
                 "save_last": True,
             }
         }
+        print(f"checkpoint saves at {ckptdir}")
         if hasattr(model, "monitor"):
             print(f"Monitoring {model.monitor} as checkpoint metric.")
             default_modelckpt_cfg["params"]["monitor"] = model.monitor
@@ -528,6 +529,7 @@ if __name__ == "__main__":
         # lightning still takes care of proper multiprocessing though
         data.prepare_data()
         data.setup()
+
 
         # configure learning rate
         bs, base_lr = config.data.params.batch_size, config.model.base_learning_rate
