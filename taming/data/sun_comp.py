@@ -92,7 +92,7 @@ class Sun360CompBase(Dataset):
             # sin, cos
             coord = self.add_cylinderical(coord) # -1 ~ 1
             # rotation augmentation 
-            image, coord, masked_image, binary_mask = self.rotation_augmentation(image, coord, masked_image, binary_mask)
+            # image, coord, masked_image, binary_mask = self.rotation_augmentation(image, coord, masked_image, binary_mask)
 
             if not self.no_crop and self.size is not None: # self.no_crop = True when training Transformer with 1:2 images, or icip(256x512)
                 processed = self.cropper(image=image, coord=coord, masked_image=masked_image, binary_mask=binary_mask)
@@ -121,7 +121,8 @@ class Sun360CompBase(Dataset):
         h, w, c = im.shape
         binary_mask = np.zeros((h,w,1))
         # random mask position
-        margin_h = int( (180 - torch.randint(70, 95, (1,)) ) / 360 * h )
+        # margin_h = int( (180 - torch.randint(70, 95, (1,)) ) / 360 * h )
+        margin_h = int( (180 - 80 ) / 360 * h )
         #print(margin_h, (h - margin_h))
         binary_mask[margin_h:(h - margin_h), int(w/4):int(w/4)*3, :] = 1.
         canvas = np.ones_like(im) * 127.5

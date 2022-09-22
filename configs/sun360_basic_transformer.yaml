@@ -95,3 +95,15 @@ data:
           interpolation: area
           no_crop: True
           no_rescale: False
+    test:
+      target: taming.data.sun_comp.Sun360CompBase
+      params:
+        data_csv: ./test.txt
+        data_root: /share/zhlu6105/dataset/video_frames/test
+        size: 256
+        random_crop: False 
+        coord: True
+        interpolation: area
+        no_crop: True
+        no_rescale: False 
+

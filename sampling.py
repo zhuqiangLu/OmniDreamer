@@ -79,7 +79,7 @@ def inference(args):
     model.cuda().eval()
 
     # second stage (AdjustmentNet)
-    if True:
+    if False:
         config_2 = OmegaConf.load(args.config_path_2)
         print(yaml.dump(OmegaConf.to_container(config_2)))
 
