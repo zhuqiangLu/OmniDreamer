@@ -71,7 +71,7 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 24
+    batch_size: 4
     num_workers: 12
     train:
       target: taming.data.sun_comp.Sun360CompBase
@@ -98,7 +98,7 @@ data:
     test:
       target: taming.data.sun_comp.Sun360CompBase
       params:
-        data_csv: ./test.txt
+        data_csv: ./test_sort.txt
         data_root: /share/zhlu6105/dataset/video_frames/test
         size: 256
         random_crop: False 

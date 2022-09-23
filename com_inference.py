@@ -10,7 +10,8 @@ import cv2
 import argparse 
 import glob
 import tqdm
-
+import matplotlib.pyplot as plt
+from collections import defaultdict
 def show_image(s, save_path):
     s = s.detach().cpu().numpy().transpose(0,2,3,1)[0]
     s = ((s+1.0)*127.5).clip(0,255).astype(np.uint8)
@@ -35,6 +36,53 @@ def get_obj_from_str(string, reload=False):
     return getattr(importlib.import_module(module, package=None), cls)
 
 
+def compute_infonce(batch, save_path):
+
+    from info_nce import InfoNCE 
+    loss = InfoNCE()
+    
+    cossim = torch.nn.CosineSimilarity(dim=-1)
+    keys = list(batch.keys())
+
+    mat = torch.zeros(len(keys), len(keys), 3)
+
+    
+    for idx1, k1 in enumerate(keys):
+        for idx3, k3 in enumerate(batch[k1].keys()):
+            for idx2, k2 in enumerate(keys):
+                mat[idx1, idx2, idx3] =  cossim(batch[k1][k3].float(), batch[k2][k3].float())
+    
+    fig = plt.figure()
+    sub = list()
+    for idx, t in enumerate(list(batch[k1].keys())):
+        sub_plot = fig.add_subplot(1, 3, idx+1)
+        sub_plot.set_title(t)
+
+        imgs = sub_plot.imshow(mat[:, :, idx],  aspect='equal')
+    fig.subplots_adjust(wspace=1) 
+    fig.colorbar(imgs)
+    fig.savefig(save_path, )
+
+def draw_codedistance(nce_dict):
+    keys = nce_dict.keys()
+    keys = list(keys)
+
+    video_idx = defaultdict(list)
+
+    for key in keys:
+        video = key.split('/')[0]
+        frame_id = key.split('/')[-1].replace('.png', '')
+        video_idx[video].append(key)
+
+    print(video_idx)
+    for video, batch_id in video_idx.items():
+        batch = dict()
+        for batch_key in batch_id:
+            batch[batch_key] = nce_dict[batch_key]
+        compute_infonce(batch, f'/share/zhlu6105/omnidreamer/codebook/{video}.png')
+
+    
+    
 
 
 if __name__ == "__main__":
@@ -55,12 +103,23 @@ if __name__ == "__main__":
     data.setup()
     dataloader = data._test_dataloader()
 
+    nce_dict = dict()
+    counter = 0
+    stop = 1000
+
     for num_1, batch in enumerate(dataloader):
         h, w = 256, 256
         concat_inputs = batch['concat_input'].permute(0,3,1,2).float().cuda()
         x = batch['image'].permute(0,3,1,2).float().cuda()
         masked_xs = batch['masked_image'].permute(0, 3, 1,2).float().cuda()
+        rel_path = batch['relative_file_path_']
+        if counter >= stop:
+            break
         for num_2, cond_input in enumerate(concat_inputs):
+            if counter >= stop:
+                break
+            batch_data = dict()
+
             num = (num_1+1) * (num_2 + 1)
             cond_input = cond_input.unsqueeze(dim=0)
             x_raw = x[num_2].unsqueeze(dim=0)
@@ -73,6 +132,11 @@ if __name__ == "__main__":
             z_indices = torch.randint(codebook_size, z_indices_shape, device=model.device)
             x_sample = model.decode_to_img(z_indices, z_code_shape)
             print("Running the first stage (completion)")
+
+            first_vq_code, first_vq_idx = model.encode_to_z(x_raw)
+            batch_data['z_idx'] = first_vq_idx
+            batch_data['c_idx'] = c_indices
+
     
             import time
     
@@ -158,6 +222,7 @@ if __name__ == "__main__":
             # probs = torch.nn.functional.softmax(logits, dim=-1)
             # idx = torch.argmax(probs, dim=-1)
             # print(logits.shape, idx.shape)
+            batch_data['rec_idx'] = idx.view(1, -1)
 
     
             x_sample = model.decode_to_img(idx, z_code_shape)
@@ -174,8 +239,12 @@ if __name__ == "__main__":
             show_image(x_sample, os.path.join(outdir, "sample_%08d.png" % (num)))
             show_image(x_raw, os.path.join(outdir, "x_%08d.png" % (num)))
             show_image(masked_x, os.path.join(outdir, 'mask_%08d.png' % (num)))
+            nce_dict[rel_path[num_2]] = batch_data
+            counter += 1
+       
+    draw_codedistance(nce_dict)
+        
     
-        break
 
 
 
