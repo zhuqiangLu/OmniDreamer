@@ -87,7 +87,7 @@ def draw_codedistance(nce_dict):
 
 if __name__ == "__main__":
     config_path = './configs/sun360_basic_transformer.yaml'
-    ckpt_path = '/share/zhlu6105/checkpoints/transformer.ckpt'
+    ckpt_path = r'/home/zhlu6105/soft_share/logs/2022-09-23T20-52-04_sun360_basic_transformer/omnidreamer/2022-09-23T20-52-04_sun360_basic_transformer/checkpoints/epoch=15-step=71904.ckpt'
     outdir = '/share/zhlu6105/omnidreamer/exp_out'
     os.makedirs(outdir, exist_ok=True)
 
@@ -107,7 +107,9 @@ if __name__ == "__main__":
     counter = 0
     stop = 1000
 
-    for num_1, batch in enumerate(dataloader):
+    for num_1, big_batch in enumerate(dataloader):
+        batch, _, _ = big_batch
+        
         h, w = 256, 256
         concat_inputs = batch['concat_input'].permute(0,3,1,2).float().cuda()
         x = batch['image'].permute(0,3,1,2).float().cuda()
@@ -131,7 +133,6 @@ if __name__ == "__main__":
             z_code_shape = c_code.shape 
             z_indices = torch.randint(codebook_size, z_indices_shape, device=model.device)
             x_sample = model.decode_to_img(z_indices, z_code_shape)
-            print("Running the first stage (completion)")
 
             first_vq_code, first_vq_idx = model.encode_to_z(x_raw)
             batch_data['z_idx'] = first_vq_idx
@@ -236,9 +237,14 @@ if __name__ == "__main__":
                 z_code_shape = [z_code_shape[0], z_code_shape[1], z_code_shape[2], idx.shape[2]]
                 x_sample = x_sample[:,:,:,16*px:-16*px]
             # x_sample = torch.cat((x_sample[:,:,:,x_sample.shape[3]//2:], x_sample[:,:,:,:x_sample.shape[3]//2]), 3)
-            show_image(x_sample, os.path.join(outdir, "sample_%08d.png" % (num)))
-            show_image(x_raw, os.path.join(outdir, "x_%08d.png" % (num)))
-            show_image(masked_x, os.path.join(outdir, 'mask_%08d.png' % (num)))
+            keys = list(batch.keys())
+            video_no = batch['relative_file_path_'][num_2].split('/')[0]
+            frame_num = batch['relative_file_path_'][num_2].split('/')[1]
+            print(counter, video_no, frame_num, batch['relative_file_path_'][num_2])
+            os.makedirs(os.path.join(outdir, video_no), exist_ok=True)
+            show_image(x_sample, os.path.join(outdir, video_no, "sample_"+frame_num ))
+            show_image(x_raw, os.path.join(outdir, video_no, "x_"+frame_num ))
+            show_image(masked_x, os.path.join(outdir, video_no, "mask_"+frame_num ))
             nce_dict[rel_path[num_2]] = batch_data
             counter += 1
        

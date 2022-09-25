@@ -265,6 +265,7 @@ class ImageLogger(Callback):
             Image.fromarray(grid).save(path)
 
     def log_img(self, pl_module, batch, batch_idx, split="train"):
+        current_batch, positive_batch, negative_batch = batch
         if (self.check_frequency(batch_idx) and  # batch_idx % self.batch_freq == 0
                 hasattr(pl_module, "log_images") and
                 callable(pl_module.log_images) and
@@ -276,7 +277,7 @@ class ImageLogger(Callback):
                 pl_module.eval()
 
             with torch.no_grad():
-                images = pl_module.log_images(batch, split=split)
+                images = pl_module.log_images(current_batch, split=split)
 
             for k in images:
                 N = min(images[k].shape[0], self.max_images)

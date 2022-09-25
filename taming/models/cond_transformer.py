@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 
 from main import instantiate_from_config
 
+from info_nce import InfoNCE
 
 def disabled_train(self, mode=True):
     """Overwrite model.train with this function to make sure train/eval mode
@@ -40,6 +41,7 @@ class Net2NetTransformer(pl.LightningModule):
         self.cond_stage_key = cond_stage_key
         self.downsample_cond_size = downsample_cond_size
         self.pkeep = pkeep
+        self.infonce = InfoNCE()
 
     def init_from_ckpt(self, path, ignore_keys=list()):
         sd = torch.load(path, map_location="cpu")["state_dict"]
@@ -270,9 +272,23 @@ class Net2NetTransformer(pl.LightningModule):
         return x, c
 
     def shared_step(self, batch, batch_idx):
-        x, c = self.get_xc(batch)
+        current_batch, positive_batch, negative_batch = batch
+        x, c = self.get_xc(current_batch)
+        pos_x, pos_c = self.get_xc(positive_batch)
+        neg_x, neg_c = self.get_xc(negative_batch)
         logits, target = self(x, c)
-        loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), target.reshape(-1))
+        pos_logits, pos_target = self(pos_x, pos_c)
+        neg_logits, neg_target = self(neg_x, neg_c)
+        cur_loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), target.reshape(-1))
+        pos_loss = F.cross_entropy(pos_logits.reshape(-1, pos_logits.size(-1)), pos_target.reshape(-1))
+        neg_loss = F.cross_entropy(neg_logits.reshape(-1, neg_logits.size(-1)), neg_target.reshape(-1))
+
+        query = logits.reshape(-1, logits.shape[-1])
+        pos = pos_logits.reshape(-1, pos_logits.shape[-1])
+        neg = neg_logits.reshape(-1, neg_logits.shape[-1])
+        info_nce_loss = self.infonce(query, pos, neg)
+        
+        loss = cur_loss + pos_loss + neg_loss + info_nce_loss
         return loss
 
     def training_step(self, batch, batch_idx):

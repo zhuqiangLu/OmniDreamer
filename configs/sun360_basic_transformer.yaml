@@ -9,9 +9,9 @@ model:
       params:
         vocab_size: 1024
         block_size: 512 # When input image is 256x256, set as 512. When input is 256x512(VQ: 16x32), set as 1024.
-        n_layer: 24
+        n_layer: 16
         n_head: 16
-        n_embd: 1024
+        n_embd: 256
     first_stage_config:
       target: taming.models.vqgan.VQModel
       params:
@@ -71,12 +71,12 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 4
+    batch_size: 24
     num_workers: 12
     train:
       target: taming.data.sun_comp.Sun360CompBase
       params:
-          data_csv:  ./train.txt
+          data_csv:  ./train_sort.txt
           data_root: /share/zhlu6105/dataset/video_frames/train
           size: 256
           random_crop: True
@@ -87,7 +87,7 @@ data:
     validation:
       target: taming.data.sun_comp.Sun360CompBase
       params:
-          data_csv: ./test.txt
+          data_csv: ./test_sort.txt
           data_root: /share/zhlu6105/dataset/video_frames/test
           size: 256
           random_crop: True

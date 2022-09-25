@@ -5,7 +5,8 @@ import albumentations
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
-
+from collections import defaultdict
+import random
 
 class Sun360CompBase(Dataset):
     def __init__(self,
@@ -21,6 +22,7 @@ class Sun360CompBase(Dataset):
         self.data_root = data_root
         with open(self.data_csv, "r") as f:
             self.image_paths = f.read().splitlines()
+        self._split_video(self.image_paths)
         self._length = len(self.image_paths)
         self.labels = {
             "relative_file_path_": [l for l in self.image_paths],
@@ -58,10 +60,46 @@ class Sun360CompBase(Dataset):
 
     def __len__(self):
         return self._length
+    
+    def _split_video(self, csv):
+        video_dict = defaultdict(list)
+        for entry in csv:
+            video_id = entry.split('/')[0]
+            video_dict[video_id].append(entry)
+        self.video_dict = video_dict
 
-    def __getitem__(self, i):
+
+
+    def get_related_frame(self, i):
+        example = dict((k, self.labels[k][i]) for k in self.labels)
+        file_path_ = example["relative_file_path_"]
+        
+        video = file_path_.split('/')[0]
+        frame_list = self.video_dict[video]
+        idx = frame_list.index(file_path_) 
+        if idx == 0:
+            positive_path = frame_list[idx + random.randint(1, 2)]
+        elif idx == len(frame_list)-1:
+            positive_path = frame_list[idx + random.randint(-2, -1)]
+        else:
+            positive_path = frame_list[idx + random.sample([-1, 1], 1)[-1]]
+        
+        videos = list(self.video_dict.keys())
+        videos.remove(video)
+        negative_path = random.sample(videos, 1)[-1]
+        negative_path = random.sample(self.video_dict[negative_path], 1)[-1]
+
+        all_file_path = self.labels['relative_file_path_']
+        positive_idx = all_file_path.index(positive_path)
+        negative_idx = all_file_path.index(negative_path)
+
+        return positive_idx, negative_idx
+
+
+    def get_one_item(self, i):
         example = dict((k, self.labels[k][i]) for k in self.labels)
         image = Image.open(example["file_path_"])
+
         if not image.mode == "RGB":
             image = image.convert("RGB")
         image = np.array(image).astype(np.uint8)
@@ -107,6 +145,16 @@ class Sun360CompBase(Dataset):
         example["image"] = (processed["image"]/127.5 - 1.0).astype(np.float32) 
         example["concat_input"] = np.concatenate((example["masked_image"], example["coord"], example["binary_mask"]), axis=2)
         return example
+
+    def __getitem__(self, i):
+        cur_idx = i
+        current_example = self.get_one_item(i)
+        positive_idx, negative_idx = self.get_related_frame(cur_idx)
+        positive_example = self.get_one_item(positive_idx)
+        negative_example = self.get_one_item(negative_idx)
+
+        return current_example, positive_example, negative_example
+        
 
     def rotation_augmentation(self, im, coord, masked_im, binary_mask):
         split_point = torch.randint(0, im.shape[1],(1,)) # w 
