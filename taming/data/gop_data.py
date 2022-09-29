@@ -83,10 +83,15 @@ class GOPDATA(Dataset):
         gop = list()
         sub_gop = list()
         prev = cv2.imread(os.path.join(self.data_root, self.data_csv[0]))
+        if self.compute_ssim_gray:
+            prev = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
         sub_gop.append(prev)
         for frame in tqdm(self.data_csv[1:]):
             nex = cv2.imread(os.path.join(self.data_root, frame))
+            if self.compute_ssim_gray:
+                nex = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
             ssim = structural_similarity(prev, nex, channel_axis=-1)
+            
 
             # if ssim is large, same sub gop, otherwise start a new one
             if ssim >= self.ssim_thres:
@@ -95,18 +100,27 @@ class GOPDATA(Dataset):
                 if len(sub_gop) >= self.gop_min_length:
                     gop.append(sub_gop)
                 sub_gop = list()
-                sub_gop.append(nex)
+                sub_gop.append(nex) 
+
+            # dont forget update prev for next round
+            prev = nex
         
         self.gop = gop
     
 
+    def get_optical_flow(self, frame_list):
+        prev = frame_list[0]
+        prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+        optical_flow = list()
+        for nex in frame_list[1:]:
+            nex_gray = cv2.cvtColor(nex, cv2.COLOR_BGR2GRAY)
+            optical_flow.append(cv2.calcOpticalFlowFarneback(prev_gray, nex_gray, None, 0.5, 3, 30, 3, 5, 1.2, 0))
+            prev_gray = nex_gray
+        return optical_flow
+        
     def process_gop(self, frame_list):
 
         frame_list = [os.path.join(self.data_root, frame_path) for frame_path in frame_list]
-
-        images = list()
-        
-
         gop_data = dict()
         for frame_path in frame_list:
             image = Image.open(frame_path)
@@ -137,8 +151,8 @@ class GOPDATA(Dataset):
                 masked_image = processed['masked_image']
                 binary_mask = processed['binary_mask']
             
-            image = (image/127.5 - 1.0).astype(np.float32)
-            masked_image = (masked_image/127.5 - 1.0).astype(np.float32)
+            # image = (image/127.5 - 1.0).astype(np.float32)
+            # masked_image = (masked_image/127.5 - 1.0).astype(np.float32)
 
             ret_batch['path'].append(frame_path)
             ret_batch['image'].append(image)
@@ -146,6 +160,13 @@ class GOPDATA(Dataset):
             ret_batch['binary_mask'].append(binary_mask)
             ret_batch['coord'].append(coord)
             ret_batch['concat_input'].append(np.concatenate((masked_image, coord, binary_mask), axis=2))
+        
+        ret_batch['optical_flow'] = self.get_optical_flow(ret_batch['image'])
+        ret_batch['masked_optical_flow'] = self.get_optical_flow(ret_batch['masked_image'])
+
+        # std images and masked images
+        ret_batch['image'] = [(image/127.5 - 1.0).astype(np.float32) for image in ret_batch['image']]
+        ret_batch['masked_image'] = [(image/127.5 - 1.0).astype(np.float32) for image in ret_batch['masked_image']]
         
         return ret_batch
 
